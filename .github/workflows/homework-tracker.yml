@@ -1,0 +1,38 @@
+name: 作业情况实时跟踪
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, closed, ready_for_review]
+  workflow_run:
+    workflows: [自动评分系统]
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  update-tracker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: 检出教师仓库代码
+      uses: actions/checkout@v4.2.2
+
+    - name: 设置Python环境
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: '3.11'
+
+    - name: 生成作业跟踪表
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        TRACKING_ISSUE_NUMBER: ${{ vars.TRACKING_ISSUE_NUMBER }}
+        HOMEWORK_NAME: 无线通信技术实验 02：信道编码与信道均衡
+      run: python grading/update_homework_tracking.py
