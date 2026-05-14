@@ -1,6 +1,20 @@
 """环境测试脚本。"""
 
+import struct
 import sys
+
+
+def test_python_architecture():
+    bits = struct.calcsize('P') * 8
+    print(f'Python 指针宽度: {bits} 位')
+    if bits < 64:
+        print(
+            '[WARN] 当前为 32 位 Python。SciPy 在 Windows 上通常无官方 pip 轮子，'
+            '会继续尝试源码编译并失败。请卸载后安装 64 位 Python，或使用 Miniconda（64 位）。'
+        )
+        return False
+    print('[OK] 64 位 Python，可正常安装 SciPy 等预编译包')
+    return True
 
 
 def test_python_version():
@@ -30,7 +44,7 @@ def main():
     print('=' * 50)
     print('信道编码与信道均衡实验 - 环境测试')
     print('=' * 50)
-    results = [test_python_version(), test_packages()]
+    results = [test_python_version(), test_python_architecture(), test_packages()]
     if all(results):
         print('环境配置正确')
     else:

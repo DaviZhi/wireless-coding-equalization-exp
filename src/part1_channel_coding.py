@@ -48,8 +48,9 @@ def hamming74_encode(bits):
     if not np.all((bits == 0) | (bits == 1)):
         raise ValueError('bits 只能包含 0 或 1')
 
-    # TODO: 将 bits reshape 为 (-1, 4)，再与 HAMMING_G 相乘并对 2 取模。
-    raise NotImplementedError('请实现 Hamming(7,4) 编码')
+    blocks = bits.reshape(-1, 4)
+    encoded = (blocks @ HAMMING_G) % 2
+    return encoded.reshape(-1)
 
 
 def hamming74_syndrome(codewords):
@@ -70,8 +71,7 @@ def hamming74_syndrome(codewords):
     if codewords.shape[1] != 7:
         raise ValueError('每个 Hamming(7,4) 码字长度必须为 7')
 
-    # TODO: 计算 s = r H^T mod 2。
-    raise NotImplementedError('请实现伴随式计算')
+    return (codewords @ HAMMING_H.T) % 2
 
 
 def hamming74_decode(received):
@@ -94,8 +94,15 @@ def hamming74_decode(received):
     if received.ndim != 1 or len(received) % 7 != 0:
         raise ValueError('received 必须是一维数组，长度为 7 的倍数')
 
-    # TODO: 使用 hamming74_syndrome 完成单比特纠错，并返回前 4 个信息位。
-    raise NotImplementedError('请实现 Hamming(7,4) 译码')
+    corrected = received.reshape(-1, 7).copy()
+    syndromes = hamming74_syndrome(corrected)
+    for index, syndrome in enumerate(syndromes):
+        if np.any(syndrome != 0):
+            for position in range(7):
+                if np.array_equal(syndrome, HAMMING_H[:, position]):
+                    corrected[index, position] ^= 1
+                    break
+    return corrected[:, :4].reshape(-1)
 
 
 def convolutional_encode(bits):

@@ -1,4 +1,14 @@
 # Wireless channel coding and equalization experiment dependencies
+#
+# Windows 重要：请使用「64 位」Python（安装程序须选 64-bit）。
+# 若为 32 位 Python（win32），PyPI 通常没有 SciPy 的 wheel，pip 会下载源码并编译，
+# 在未安装 Visual Studio C++ 生成工具时会报错（meson / Unknown compiler）。
+#
+# 若已使用 64 位 Python 仍尝试编译 SciPy，可先：
+#   python -m pip install -U pip wheel
+#   pip cache purge
+#   pip install -r requirements.txt
+#
 numpy>=1.23.0
 scipy>=1.9.0
 matplotlib>=3.6.0

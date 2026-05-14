@@ -4,6 +4,9 @@ Part 2：信道均衡实验
 学生需要完成 ZF 均衡器估计、FIR 滤波应用和 LMS 自适应均衡。
 """
 
+import matplotlib  # Matplotlib 核心包
+import matplotlib.pyplot as plt  # noqa: F401  # pyplot；utils 中绘图会再次 import，此处显式声明实验依赖
+
 import numpy as np
 from utils import (
     bpsk_demodulate,
@@ -38,8 +41,20 @@ def estimate_zf_equalizer(channel, num_taps):
     if num_taps < 1:
         raise ValueError('num_taps 必须为正整数')
 
-    # TODO: 构造卷积矩阵并求解 ZF 均衡器抽头。
-    raise NotImplementedError('请实现 ZF 均衡器估计')
+    length_channel = len(channel)
+    length_output = length_channel + num_taps - 1
+    matrix = np.zeros((length_output, num_taps), dtype=float)
+    for output_index in range(length_output):
+        for tap_index in range(num_taps):
+            channel_index = output_index - tap_index
+            if 0 <= channel_index < length_channel:
+                matrix[output_index, tap_index] = channel[channel_index]
+
+    target = np.zeros(length_output, dtype=float)
+    center = (length_output - 1) // 2
+    target[center] = 1.0
+    taps, *_ = np.linalg.lstsq(matrix, target, rcond=None)
+    return taps
 
 
 def apply_fir_filter(signal, taps):
@@ -58,8 +73,7 @@ def apply_fir_filter(signal, taps):
     if signal.ndim != 1 or taps.ndim != 1:
         raise ValueError('signal 和 taps 必须是一维数组')
 
-    # TODO: 使用 np.convolve，并截取与 signal 等长的输出。
-    raise NotImplementedError('请实现 FIR 滤波')
+    return np.convolve(signal, taps, mode='full')[: len(signal)]
 
 
 def lms_equalizer(rx_train, tx_train, num_taps, step_size=0.01):
@@ -89,8 +103,18 @@ def lms_equalizer(rx_train, tx_train, num_taps, step_size=0.01):
     if num_taps < 1:
         raise ValueError('num_taps 必须为正整数')
 
-    # TODO: 实现 LMS 自适应均衡训练。
-    raise NotImplementedError('请实现 LMS 均衡器')
+    taps = np.zeros(num_taps, dtype=float)
+    taps[(num_taps - 1) // 2] = 1.0
+    errors_list = []
+    for index in range(num_taps - 1, len(rx_train)):
+        window = rx_train[index - num_taps + 1 : index + 1]
+        input_vector = window[::-1]
+        output = float(np.dot(taps, input_vector))
+        error = float(tx_train[index] - output)
+        errors_list.append(error)
+        taps = taps + step_size * error * input_vector
+    errors = np.asarray(errors_list, dtype=float)
+    return taps, errors
 
 
 def run_equalization_demo():
