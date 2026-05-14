@@ -30,7 +30,7 @@ def check_report_content(path):
 
     sections_found = sum(1 for section in REQUIRED_SECTIONS if section in content)
     score += sections_found * 2
-    feedback.append(f'📋 章节完整性: {sections_found}/{len(REQUIRED_SECTIONS)}')
+    feedback.append(f'[INFO] 章节完整性: {sections_found}/{len(REQUIRED_SECTIONS)}')
 
     image_refs = re.findall(r'!\[.*?\]\(.*?\)', content)
     if len(image_refs) >= 3:

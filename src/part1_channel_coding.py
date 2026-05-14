@@ -105,6 +105,17 @@ def hamming74_decode(received):
     return corrected[:, :4].reshape(-1)
 
 
+def _convolutional_outputs_and_next_state(state, input_bit):
+    """(2,1,3) 一步：状态为 (u_{n-2}, u_{n-1})，输入 u_n，返回 (c1,c2) 与下一状态编码 0..3。"""
+    x0 = state // 2
+    x1 = state % 2
+    u = int(input_bit) & 1
+    c1 = u ^ x1 ^ x0
+    c2 = u ^ x0
+    next_state = 2 * x1 + u
+    return c1, c2, next_state
+
+
 def convolutional_encode(bits):
     """
     选做：实现 (2,1,3) 卷积码编码，生成多项式为 g1=111, g2=101。
@@ -112,11 +123,18 @@ def convolutional_encode(bits):
     默认在末尾添加 2 个 0 作为尾比特，使状态回到全零。
     """
     bits = np.asarray(bits, dtype=int)
+    if bits.ndim != 1:
+        raise ValueError('bits 必须是一维数组')
     if not np.all((bits == 0) | (bits == 1)):
         raise ValueError('bits 只能包含 0 或 1')
 
-    # TODO: 选做任务，可参考课件第6章卷积码部分。
-    raise NotImplementedError('选做：请实现卷积码编码')
+    padded = np.concatenate([bits, np.zeros(2, dtype=int)])
+    state = 0
+    output = []
+    for u in padded:
+        c1, c2, state = _convolutional_outputs_and_next_state(state, u)
+        output.extend([c1, c2])
+    return np.asarray(output, dtype=int)
 
 
 def viterbi_decode_hard(received_bits):
@@ -124,11 +142,56 @@ def viterbi_decode_hard(received_bits):
     选做：实现 (2,1,3) 卷积码硬判决 Viterbi 译码。
     """
     received_bits = np.asarray(received_bits, dtype=int)
+    if received_bits.ndim != 1:
+        raise ValueError('received_bits 必须是一维数组')
     if len(received_bits) % 2 != 0:
         raise ValueError('卷积码接收序列长度必须是 2 的倍数')
+    if not np.all((received_bits == 0) | (received_bits == 1)):
+        raise ValueError('received_bits 只能包含 0 或 1')
 
-    # TODO: 选做任务，可使用汉明距离作为路径度量。
-    raise NotImplementedError('选做：请实现 Viterbi 硬判决译码')
+    num_steps = len(received_bits) // 2
+    if num_steps == 0:
+        return np.zeros(0, dtype=int)
+
+    large = 1e18
+    cost = np.full(4, large, dtype=float)
+    cost[0] = 0.0
+    survivor_prev = np.zeros((num_steps, 4), dtype=int)
+    survivor_bit = np.zeros((num_steps, 4), dtype=int)
+
+    for step in range(num_steps):
+        r0 = int(received_bits[2 * step])
+        r1 = int(received_bits[2 * step + 1])
+        new_cost = np.full(4, large, dtype=float)
+        for prev_state in range(4):
+            path = cost[prev_state]
+            if path >= large:
+                continue
+            x0 = prev_state // 2
+            x1 = prev_state % 2
+            for u in (0, 1):
+                c1 = u ^ x1 ^ x0
+                c2 = u ^ x0
+                next_state = 2 * x1 + u
+                branch = int(r0 != c1) + int(r1 != c2)
+                candidate = path + branch
+                if candidate < new_cost[next_state]:
+                    new_cost[next_state] = candidate
+                    survivor_prev[step, next_state] = prev_state
+                    survivor_bit[step, next_state] = u
+        cost = new_cost
+
+    end_state = int(np.argmin(cost))
+    decoded_rev = []
+    state = end_state
+    for step in range(num_steps - 1, -1, -1):
+        decoded_rev.append(int(survivor_bit[step, state]))
+        state = int(survivor_prev[step, state])
+
+    with_tail = np.asarray(decoded_rev[::-1], dtype=int)
+    if len(with_tail) < 2:
+        return with_tail
+    return with_tail[:-2]
 
 
 def run_coding_demo():
